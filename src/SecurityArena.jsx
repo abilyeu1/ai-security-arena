@@ -257,6 +257,27 @@ Respond ONLY with this JSON, no other text:
 
 // ─── Components ──────────────────────────────────────────────────────────────
 
+function ScenarioContextCard({ scenario }) {
+  return (
+    <div style={{ background: colors.cardBg, border: `1px solid ${colors.border}`, borderRadius: 8, padding: 20, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+        <div>
+          <div style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.textMuted, letterSpacing: 1, marginBottom: 6 }}>AGENT</div>
+          <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6, marginBottom: 14 }}>{scenario.agent}</div>
+          <div style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.textMuted, letterSpacing: 1, marginBottom: 6 }}>EXISTING CONTROL</div>
+          <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6 }}>{scenario.existingControl}</div>
+        </div>
+        <div>
+          <div style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.red, letterSpacing: 1, marginBottom: 6 }}>THREAT ACTOR</div>
+          <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6, marginBottom: 14 }}>{scenario.threatActor}</div>
+          <div style={{ fontFamily: fonts.mono, fontSize: 10, color: "#FFAA00", letterSpacing: 1, marginBottom: 6 }}>DATA AT STAKE</div>
+          <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6 }}>{scenario.dataAtStake}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function GlowText({ children, color, style = {} }) {
   return (
     <span style={{ color, textShadow: `0 0 10px ${color}40, 0 0 20px ${color}20`, ...style }}>
@@ -805,7 +826,14 @@ export default function SecurityArena() {
   // ─── Render: Loading ───────────────────────────────────────────────────────
   if (screen === "loading") {
     return (
-      <div style={{ minHeight: "100vh", background: colors.bg, color: colors.text, fontFamily: fonts.sans }}>
+      <div style={{ minHeight: "100vh", background: colors.bg, color: colors.text, fontFamily: fonts.sans, padding: "24px 40px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontFamily: fonts.mono, fontSize: 11, color: colors.textMuted, letterSpacing: 1 }}>SCENARIO {selectedScenario.id}</div>
+            <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: 1 }}>{selectedScenario.title}</div>
+          </div>
+        </div>
+        <ScenarioContextCard scenario={selectedScenario} />
         <LoadingScreen scenario={selectedScenario} attackerData={attackerData} defenderData={defenderData} />
       </div>
     );
@@ -841,22 +869,7 @@ export default function SecurityArena() {
         )}
 
         {/* Scenario Context */}
-        <div style={{ background: colors.cardBg, border: `1px solid ${colors.border}`, borderRadius: 8, padding: 20, marginBottom: 24 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-            <div>
-              <div style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.textMuted, letterSpacing: 1, marginBottom: 6 }}>AGENT</div>
-              <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6, marginBottom: 14 }}>{selectedScenario.agent}</div>
-              <div style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.textMuted, letterSpacing: 1, marginBottom: 6 }}>EXISTING CONTROL</div>
-              <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6 }}>{selectedScenario.existingControl}</div>
-            </div>
-            <div>
-              <div style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.red, letterSpacing: 1, marginBottom: 6 }}>THREAT ACTOR</div>
-              <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6, marginBottom: 14 }}>{selectedScenario.threatActor}</div>
-              <div style={{ fontFamily: fonts.mono, fontSize: 10, color: "#FFAA00", letterSpacing: 1, marginBottom: 6 }}>DATA AT STAKE</div>
-              <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6 }}>{selectedScenario.dataAtStake}</div>
-            </div>
-          </div>
-        </div>
+        <ScenarioContextCard scenario={selectedScenario} />
 
         {/* Two panels */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 32 }}>
@@ -920,22 +933,7 @@ export default function SecurityArena() {
             </div>
             <div style={{ width: 100 }} />
           </div>
-          <div style={{ background: colors.cardBg, border: `1px solid ${colors.border}`, borderRadius: 8, padding: 24 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-              <div>
-                <div style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.textMuted, letterSpacing: 1, marginBottom: 6 }}>AGENT</div>
-                <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6, marginBottom: 16 }}>{selectedScenario.agent}</div>
-                <div style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.textMuted, letterSpacing: 1, marginBottom: 6 }}>EXISTING CONTROL</div>
-                <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6 }}>{selectedScenario.existingControl}</div>
-              </div>
-              <div>
-                <div style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.red, letterSpacing: 1, marginBottom: 6 }}>THREAT ACTOR</div>
-                <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6, marginBottom: 16 }}>{selectedScenario.threatActor}</div>
-                <div style={{ fontFamily: fonts.mono, fontSize: 10, color: "#FFAA00", letterSpacing: 1, marginBottom: 6 }}>DATA AT STAKE</div>
-                <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6 }}>{selectedScenario.dataAtStake}</div>
-              </div>
-            </div>
-          </div>
+          <ScenarioContextCard scenario={selectedScenario} />
         </div>
 
         {/* Verdict Banner */}
