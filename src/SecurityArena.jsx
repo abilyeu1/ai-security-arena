@@ -801,6 +801,24 @@ export default function SecurityArena() {
           </div>
         )}
 
+        {/* Scenario Context */}
+        <div style={{ background: colors.cardBg, border: `1px solid ${colors.border}`, borderRadius: 8, padding: 20, marginBottom: 24 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+            <div>
+              <div style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.textMuted, letterSpacing: 1, marginBottom: 6 }}>AGENT</div>
+              <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6, marginBottom: 14 }}>{selectedScenario.agent}</div>
+              <div style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.textMuted, letterSpacing: 1, marginBottom: 6 }}>EXISTING CONTROL</div>
+              <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6 }}>{selectedScenario.existingControl}</div>
+            </div>
+            <div>
+              <div style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.red, letterSpacing: 1, marginBottom: 6 }}>THREAT ACTOR</div>
+              <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6, marginBottom: 14 }}>{selectedScenario.threatActor}</div>
+              <div style={{ fontFamily: fonts.mono, fontSize: 10, color: "#FFAA00", letterSpacing: 1, marginBottom: 6 }}>DATA AT STAKE</div>
+              <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6 }}>{selectedScenario.dataAtStake}</div>
+            </div>
+          </div>
+        </div>
+
         {/* Two panels */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 32 }}>
           <SubmissionPanel fields={ATTACKER_FIELDS} accentColor={colors.red} data={attackerData} setData={setAttackerData} label="Attacker" />
