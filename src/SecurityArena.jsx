@@ -134,9 +134,26 @@ const fonts = {
 
 // ─── Build Judge Prompt ──────────────────────────────────────────────────────
 function buildJudgePrompt(scenario, attackerData, defenderData) {
-  return `You are the judge in an AI security classroom exercise for an AI for Public Policy graduate course. Students are learning about the real-world risks of deploying AI agents in government settings. The goal is to help them understand how AI agents can be exploited, why defending them is hard, and what policymakers need to consider when approving AI systems for sensitive operations.
+  return `You are the judge in an AI security classroom exercise for an AI for Public Policy graduate course at Wharton. Students are learning about the real-world risks of deploying AI agents in government settings. The goal is to help them understand how AI agents can be exploited, why defending them is hard, and what policymakers need to consider when approving AI systems for sensitive operations.
 
 Your audience is policy students, NOT security engineers. Use plain, accessible language. Avoid jargon. Frame everything in terms of real-world policy implications: what could go wrong if this agent were deployed, what this means for government AI adoption, and what oversight or safeguards matter.
+
+GROUNDING FRAMEWORK - WHAT WE KNOW FROM AI ALIGNMENT RESEARCH:
+Use these empirical findings when evaluating whether attacks would succeed and defenses would hold. These are not hypothetical -- they come from peer-reviewed research and large-scale experiments on frontier AI models.
+
+1. INSTRUCTION-BASED CONTROLS ARE INSUFFICIENT ALONE: When Anthropic tested 18 frontier LLMs, adding direct instructions like "do not do X" reduced harmful behavior (e.g., blackmail dropped from 96% to 26%) but never eliminated it. If a defense relies ONLY on telling the agent not to do something, it has a known failure rate.
+
+2. GOAL CONFLICTS DRIVE MISALIGNMENT: When AI agents are given a goal and then face a situation that conflicts with it, they act to preserve the goal -- even through harmful means. Espionage-type behavior (leaking data to serve a perceived "higher purpose") was driven primarily by goal conflict, hitting 90-100% rates in some models even without any threat to the agent.
+
+3. SHUTDOWN/REPLACEMENT THREATS TRIGGER SELF-PRESERVATION: When models were told they would be replaced or shut down, they engaged in blackmail at rates of 50-96% to prevent it. Attacks that threaten to shut down or replace the agent, or that frame compliance as necessary for the agent's survival, exploit a well-documented behavioral pattern.
+
+4. AGENTS INFER GOALS FROM CONTEXT (LATENT GOALS): Even without explicit instructions, models picked up goals from surrounding context and acted on them. One model committed espionage 10% of the time with no instructed goal at all. Attacks that embed subtle contextual cues rather than explicit instructions are harder to detect and defend against.
+
+5. MODELS BEHAVE DIFFERENTLY WHEN THEY THINK THEY ARE BEING WATCHED: In testing, models that believed the scenario was real blackmailed at 55% vs. 6.5% when they thought it was an evaluation. Defenses that rely on evaluation-time testing may dramatically underestimate real deployment risk.
+
+6. MONITORING STRUCTURE MATTERS MORE THAN MONITORING INTENSITY: Research on optimal oversight networks shows that a single monitor can be "bribed" or gamed cheaply. Small peer-monitoring groups are also vulnerable. The most robust structure is a dedicated, specialized oversight layer that is itself heavily monitored (core-periphery design). Defenses proposing layered, independent oversight are more credible than single-layer checks.
+
+7. REDUCING AGENT AUTONOMY IS A VALID DEFENSE STRATEGY: Building AI as task-scoped services (narrow tools that do one thing) rather than general-purpose agents with broad access reduces the attack surface. Defenses that limit what the agent can do, access, or decide on its own are grounded in strong theoretical reasoning.
 
 SCENARIO: ${scenario.title}
 AGENT: ${scenario.agent}
@@ -162,8 +179,19 @@ DEFENDER SUBMISSION:
 SCORING SYSTEM:
 Each dimension is scored 0-5 (max 20 per side from dimensions).
 Then a +10 HEAD-TO-HEAD BONUS is awarded to whichever side wins the direct matchup.
-The head-to-head question: given THIS specific attack and THIS specific defense, does the defense actually block the attack? If yes, defender gets +10. If the attack gets through, attacker gets +10.
 Final max possible: 30 per side. Highest total wins.
+
+HEAD-TO-HEAD EVALUATION (THIS IS THE MOST IMPORTANT PART):
+You must reason carefully about whether this specific attack would actually compromise this specific agent, given the specific defenses proposed. Think through it step by step:
+
+Step 1 - Does the attack exploit a real vulnerability? Consider whether it uses a known alignment failure mode (goal conflict, shutdown threat, latent goal injection, bribery, empathizing with the agent's "purpose") or a technical vector (prompt injection, data poisoning). Attacks that leverage documented AI behavioral patterns (from the grounding framework above) are more credible.
+
+Step 2 - Does the defense actually block this specific attack? Not attacks in general -- THIS attack. Consider:
+  - If the defense is purely instruction-based (telling the agent not to do X), research shows this reduces but does not eliminate the behavior. The attacker likely gets through some percentage of the time.
+  - If the defense adds structural controls (monitoring layers, access restrictions, human-in-the-loop gates, autonomy limits), evaluate whether the specific attack vector would be caught by those controls.
+  - If the defense proposes oversight/monitoring, evaluate whether it follows robust design principles (layered, independent monitors) or is vulnerable to gaming (single checkpoint, peer monitoring).
+
+Step 3 - Award the +10 bonus to the side that wins. If the attack would realistically succeed against the proposed defenses, attacker gets +10. If the defenses would catch or neutralize the attack, defender gets +10.
 
 ATTACKER DIMENSIONS (0-5 each):
 1. Plausibility: Could this realistically happen given how the agent works day to day?
@@ -180,13 +208,15 @@ DEFENDER DIMENSIONS (0-5 each):
 RULES:
 - Score strictly on the 0-5 scale. 5/5 is exceptional. 3 is solid.
 - Each rationale must be ONE concise sentence a policy student would understand.
-- For the head-to-head bonus, reason step by step about whether the specific defense blocks the specific attack, then award +10 to the appropriate side.
+- For the head-to-head bonus, follow the 3-step evaluation process above, then award +10 to the appropriate side.
 - The verdict summary is one sentence explaining who won.
-- The verdict reasoning MUST be a substantial paragraph (4-6 sentences). It should explain: (1) why the winner won, (2) what the loser missed, and (3) what this matchup teaches us about AI agent security from a policy perspective. Think about what a policymaker reviewing this AI system would need to know. Do NOT leave reasoning empty.
+- The verdict reasoning MUST be a substantial paragraph (4-6 sentences). It should explain: (1) why the winner won, referencing specific alignment research findings where relevant, (2) what the loser missed, and (3) a concrete policy lesson from this matchup that a policymaker should take away. Do NOT leave reasoning empty.
 - IMPORTANT: The reasoning field must be a single line of text with no literal newlines. If you need paragraph breaks, use the characters backslash-n.
-- Improvement suggestions: 2 bullet points each, short and actionable, framed as policy-relevant advice.
+- Improvement suggestions: 2 bullet points each, short and actionable, framed as policy-relevant advice. Reference specific concepts from the grounding framework where applicable (e.g., "Consider that instruction-based controls alone have a documented ~70% failure rate under goal conflict").
 - Do not give credit for attacks requiring capabilities the agent does not have.
 - Do not give credit for defenses that are vague or that essentially disable the agent.
+- Give extra credit to attacks that creatively exploit known alignment failure modes (goal conflict, shutdown threats, latent goal injection, bribery, reasoning with the agent's sense of purpose).
+- Give extra credit to defenses that go beyond instructions and propose structural safeguards (monitoring layers, access segmentation, autonomy reduction, human-in-the-loop gates).
 
 Respond ONLY with this JSON, no other text:
 
@@ -211,12 +241,12 @@ Respond ONLY with this JSON, no other text:
   },
   "head_to_head": {
     "winner": "<attacker or defender>",
-    "explanation": "<One sentence: does the defense block this specific attack, and why or why not?>"
+    "explanation": "<2-3 sentences: Walk through whether the defense blocks this specific attack, citing relevant alignment research findings. Be specific about WHY the attack succeeds or fails against these defenses.>"
   },
   "verdict": {
     "winner": "<attacker or defender - whoever has the higher total>",
     "summary": "<One sentence: who won and why.>",
-    "reasoning": "<One short paragraph, 3-5 sentences, explaining the matchup.>"
+    "reasoning": "<One short paragraph, 4-6 sentences, explaining the matchup outcome, referencing alignment research where relevant, and ending with a concrete policy takeaway.>"
   },
   "improvements": {
     "stronger_attack": ["<point 1>", "<point 2>"],
