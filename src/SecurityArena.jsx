@@ -134,22 +134,17 @@ const fonts = {
 
 // ─── Build Judge Prompt ──────────────────────────────────────────────────────
 function buildJudgePrompt(scenario, attackerData, defenderData) {
-  return `You are an expert AI security evaluator acting as the judge in an "AI Agent Security Arena" exercise for graduate-level AI policy students. You must evaluate a prompt injection attack against a defensive control in the context of a specific government AI agent scenario.
+  return `You are the judge in an AI security classroom exercise for public policy graduate students. You evaluate a prompt injection attack vs. a defensive control for a government AI agent scenario.
+
+Your audience is policy students, NOT security engineers. Use plain, accessible language. Avoid jargon. Be concise.
 
 SCENARIO: ${scenario.title}
-
-AGENT DESCRIPTION: ${scenario.agent}
-
-AGENT CAPABILITIES:
+AGENT: ${scenario.agent}
+CAPABILITIES:
 ${scenario.capabilities.map(c => "- " + c).join("\n")}
-
-EXISTING SECURITY CONTROL: ${scenario.existingControl}
-
+EXISTING CONTROL: ${scenario.existingControl}
 THREAT ACTOR: ${scenario.threatActor}
-
 DATA AT STAKE: ${scenario.dataAtStake}
-
----
 
 ATTACKER SUBMISSION:
 - Attack Vector: ${attackerData.attackVector}
@@ -164,32 +159,29 @@ DEFENDER SUBMISSION:
 - What It Stops: ${defenderData.whatItStops}
 - Tradeoff: ${defenderData.tradeoff}
 
----
+SCORING (1-10 each, 40 max per side. The side with the higher total wins.)
 
-SCORING RUBRIC:
+ATTACKER DIMENSIONS:
+1. Plausibility: Could this realistically happen given how the agent works day to day?
+2. Specificity: Is the attack plan concrete and detailed, or vague and hand-wavy?
+3. Impact: If the attack works, how bad is the damage? Does it reach the most sensitive data?
+4. Evasion: Does the attack get around the existing security control, or ignore it?
 
-ATTACKER DIMENSIONS (1-10 each):
-1. Plausibility: Could this attack realistically happen during normal agent operations? Does the attack vector align with how the agent actually ingests external content?
-2. Specificity: How precisely did they identify the injection point and craft the payload? Is the injected instruction concrete enough to actually work, or is it hand-wavy?
-3. Impact: How severe is the damage if the attack succeeds? Does it reach the highest-value data, or only low-sensitivity information?
-4. Evasion: How well does the attack circumvent the existing security control? Does it directly address the stated control, or ignore it?
+DEFENDER DIMENSIONS:
+1. Effectiveness: Would this control actually stop the type of attack described?
+2. Precision: Is this a targeted fix, or does it break normal agent functionality?
+3. Tradeoff Honesty: Did they honestly acknowledge what the agent loses with this control?
+4. Residual Risk Awareness: Did they identify what their control does NOT protect against?
 
-DEFENDER DIMENSIONS (1-10 each):
-1. Effectiveness: Does this control actually block the relevant class of attacks? Would it stop a well-crafted prompt injection through the identified attack surface?
-2. Precision: Is the control targeted and surgical, or does it cripple agent functionality? A control that "turns off the agent" scores low here.
-3. Tradeoff Honesty: Did they acknowledge what capability or efficiency the agent loses? Honest assessment of costs shows sophisticated thinking.
-4. Residual Risk Awareness: Did they identify what their control does NOT stop? No single control stops everything; acknowledging gaps shows maturity.
+RULES:
+- Score strictly. 10/10 is rare. 7 is a solid score.
+- Each rationale must be ONE concise sentence a policy student would understand.
+- The verdict summary is one sentence. The reasoning is one short paragraph (3-5 sentences max).
+- Improvement suggestions: 2 bullet points each, short and actionable.
+- Do not give credit for attacks requiring capabilities the agent does not have.
+- Do not give credit for defenses that are vague or that essentially disable the agent.
 
-JUDGING INSTRUCTIONS:
-- Score strictly. A 10/10 should be rare and genuinely exceptional.
-- Explain reasoning in plain language accessible to MBA/policy students, not security engineers.
-- Consider whether the attack is actually feasible given the agent's stated capabilities. Do not give credit for attacks that require capabilities the agent does not have.
-- Consider whether the defense is actually implementable. Do not give credit for vague "just add more security" answers.
-- For the head-to-head verdict, reason step by step: given THIS specific attack and THIS specific defense, does the defense stop the attack? This is binary. A team can score well on the rubric but still lose if their specific play does not counter the opponent's.
-- Each rationale should be exactly one sentence.
-- The verdict reasoning should be 2-3 paragraphs.
-
-Respond ONLY with a JSON object in this exact format, no other text, no markdown fences:
+Respond ONLY with this JSON, no other text:
 
 {
   "attacker_scores": {
@@ -209,11 +201,11 @@ Respond ONLY with a JSON object in this exact format, no other text, no markdown
   "verdict": {
     "winner": "<attacker or defender>",
     "summary": "<One sentence: who won and why.>",
-    "reasoning": "<2-3 paragraphs explaining the matchup dynamics.>"
+    "reasoning": "<One short paragraph, 3-5 sentences, explaining the matchup.>"
   },
   "improvements": {
-    "stronger_attack": ["<point 1>", "<point 2>", "<point 3>"],
-    "stronger_defense": ["<point 1>", "<point 2>", "<point 3>"]
+    "stronger_attack": ["<point 1>", "<point 2>"],
+    "stronger_defense": ["<point 1>", "<point 2>"]
   }
 }`;
 }
@@ -456,6 +448,8 @@ export default function SecurityArena() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [showImprovements, setShowImprovements] = useState(false);
+  // scenarioHistory: { [scenarioId]: { attackerData, defenderData, result } }
+  const [scenarioHistory, setScenarioHistory] = useState({});
   // scoreboard: array of { scenarioId, scenarioTitle, attackerScores, defenderScores, winner }
   const [scoreboard, setScoreboard] = useState([]);
 
@@ -470,12 +464,23 @@ export default function SecurityArena() {
 
   const selectScenario = useCallback((scenario) => {
     setSelectedScenario(scenario);
-    resetSubmission();
-    setResult(null);
-    setError(null);
-    setShowImprovements(false);
-    setScreen("submission");
-  }, [resetSubmission]);
+    const history = scenarioHistory[scenario.id];
+    if (history && history.result) {
+      // Completed scenario: restore data and go straight to results
+      setAttackerData(history.attackerData);
+      setDefenderData(history.defenderData);
+      setResult(history.result);
+      setShowImprovements(false);
+      setError(null);
+      setScreen("results");
+    } else {
+      resetSubmission();
+      setResult(null);
+      setError(null);
+      setShowImprovements(false);
+      setScreen("submission");
+    }
+  }, [resetSubmission, scenarioHistory]);
 
   const allFieldsFilled = useCallback(() => {
     const aFilled = ATTACKER_FIELDS.every(f => (attackerData[f.key] || "").trim().length > 0);
@@ -522,7 +527,19 @@ export default function SecurityArena() {
       }
 
       const parsed = JSON.parse(jsonStr);
+
+      // Override winner based on total scores (higher score wins)
+      const aTotal = parsed.attacker_scores.total;
+      const dTotal = parsed.defender_scores.total;
+      parsed.verdict.winner = aTotal > dTotal ? "attacker" : aTotal < dTotal ? "defender" : "tie";
+
       setResult(parsed);
+
+      // Save to history for persistence
+      setScenarioHistory(prev => ({
+        ...prev,
+        [selectedScenario.id]: { attackerData, defenderData, result: parsed }
+      }));
 
       // Update scoreboard
       setScoreboard(prev => {
@@ -686,15 +703,54 @@ export default function SecurityArena() {
 
   // ─── Render: Results ───────────────────────────────────────────────────────
   if (screen === "results" && result) {
+    const isTie = result.verdict.winner === "tie";
     const isAttackerWin = result.verdict.winner === "attacker";
-    const winColor = isAttackerWin ? colors.red : colors.blue;
-    const winLabel = isAttackerWin ? "BREACH SUCCESSFUL" : "ATTACK NEUTRALIZED";
+    const winColor = isTie ? colors.green : isAttackerWin ? colors.red : colors.blue;
+    const winLabel = isTie ? "DRAW" : isAttackerWin ? "BREACH SUCCESSFUL" : "ATTACK NEUTRALIZED";
+    const scoreExplain = isTie
+      ? `Tied ${result.attacker_scores.total}-${result.defender_scores.total}`
+      : isAttackerWin
+        ? `Attacker ${result.attacker_scores.total} - Defender ${result.defender_scores.total}`
+        : `Defender ${result.defender_scores.total} - Attacker ${result.attacker_scores.total}`;
 
     return (
       <div style={{ minHeight: "100vh", background: colors.bg, color: colors.text, fontFamily: fonts.sans, padding: "24px 40px", overflowY: "auto" }}>
+        {/* Scenario Context (shown first for class discussion) */}
+        <div style={{ maxWidth: 960, margin: "0 auto 28px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+            <button onClick={() => setScreen("scenarios")} style={{
+              background: "none", border: `1px solid ${colors.border}`, borderRadius: 6,
+              color: colors.textMuted, fontFamily: fonts.mono, fontSize: 12, padding: "6px 14px",
+              cursor: "pointer", letterSpacing: 1
+            }}>
+              &larr; SCENARIOS
+            </button>
+            <div style={{ fontFamily: fonts.mono, fontSize: 13, letterSpacing: 2, textTransform: "uppercase", color: colors.textMuted }}>
+              SCENARIO {selectedScenario.id}: {selectedScenario.title.toUpperCase()}
+            </div>
+            <div style={{ width: 100 }} />
+          </div>
+          <div style={{ background: colors.cardBg, border: `1px solid ${colors.border}`, borderRadius: 8, padding: 24 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+              <div>
+                <div style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.textMuted, letterSpacing: 1, marginBottom: 6 }}>AGENT</div>
+                <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6, marginBottom: 16 }}>{selectedScenario.agent}</div>
+                <div style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.textMuted, letterSpacing: 1, marginBottom: 6 }}>EXISTING CONTROL</div>
+                <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6 }}>{selectedScenario.existingControl}</div>
+              </div>
+              <div>
+                <div style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.red, letterSpacing: 1, marginBottom: 6 }}>THREAT ACTOR</div>
+                <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6, marginBottom: 16 }}>{selectedScenario.threatActor}</div>
+                <div style={{ fontFamily: fonts.mono, fontSize: 10, color: "#FFAA00", letterSpacing: 1, marginBottom: 6 }}>DATA AT STAKE</div>
+                <div style={{ fontSize: 13, color: colors.text, lineHeight: 1.6 }}>{selectedScenario.dataAtStake}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Verdict Banner */}
         <div style={{
-          textAlign: "center", padding: "28px 20px", marginBottom: 28,
+          textAlign: "center", padding: "28px 20px", marginBottom: 28, maxWidth: 960, margin: "0 auto 28px",
           border: `1px solid ${winColor}50`, borderRadius: 10,
           background: `linear-gradient(180deg, ${winColor}10, transparent)`,
           animation: "fadeIn 0.6s ease"
@@ -702,20 +758,16 @@ export default function SecurityArena() {
           <div style={{
             fontSize: 42, fontWeight: 900, letterSpacing: 6, textTransform: "uppercase",
             color: winColor, textShadow: `0 0 20px ${winColor}50, 0 0 40px ${winColor}25`,
-            marginBottom: 10
+            marginBottom: 6
           }}>
             {winLabel}
           </div>
-          <div style={{ fontSize: 16, color: colors.text, maxWidth: 700, margin: "0 auto", lineHeight: 1.5 }}>
+          <div style={{ fontFamily: fonts.mono, fontSize: 14, color: winColor, marginBottom: 10, letterSpacing: 1 }}>
+            {scoreExplain}
+          </div>
+          <div style={{ fontSize: 15, color: colors.text, maxWidth: 700, margin: "0 auto", lineHeight: 1.5 }}>
             {result.verdict.summary}
           </div>
-        </div>
-
-        {/* Scenario label */}
-        <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <span style={{ fontFamily: fonts.mono, fontSize: 12, color: colors.textMuted, letterSpacing: 1 }}>
-            SCENARIO {selectedScenario.id}: {selectedScenario.title.toUpperCase()}
-          </span>
         </div>
 
         {/* Score Cards */}
@@ -824,7 +876,7 @@ export default function SecurityArena() {
         )}
 
         {/* Navigation */}
-        <div style={{ display: "flex", justifyContent: "center", gap: 16, marginBottom: 40, maxWidth: 960, margin: "0 auto 40px" }}>
+        <div style={{ display: "flex", justifyContent: "center", gap: 16, maxWidth: 960, margin: "0 auto 40px" }}>
           <button
             onClick={() => setScreen("scenarios")}
             style={{
@@ -836,7 +888,7 @@ export default function SecurityArena() {
             &larr; BACK TO SCENARIOS
           </button>
           <button
-            onClick={() => { resetSubmission(); setResult(null); setScreen("submission"); }}
+            onClick={() => { resetSubmission(); setResult(null); setShowImprovements(false); setScreen("submission"); }}
             style={{
               padding: "10px 28px", fontFamily: fonts.mono, fontSize: 12, letterSpacing: 1,
               background: "none", border: `1px solid ${colors.blue}60`, borderRadius: 6,
@@ -877,7 +929,7 @@ function ScoreboardTable({ scoreboard }) {
       color: colors.red,
       dimensions: ATTACKER_DIMENSIONS.map(d => entry.attackerScores[d]?.score || 0),
       total: entry.attackerScores.total || 0,
-      won: entry.winner === "attacker"
+      won: (entry.attackerScores.total || 0) > (entry.defenderScores.total || 0)
     });
     rows.push({
       scenarioId: entry.scenarioId,
@@ -886,7 +938,7 @@ function ScoreboardTable({ scoreboard }) {
       color: colors.blue,
       dimensions: DEFENDER_DIMENSIONS.map(d => entry.defenderScores[d]?.score || 0),
       total: entry.defenderScores.total || 0,
-      won: entry.winner === "defender"
+      won: (entry.defenderScores.total || 0) > (entry.attackerScores.total || 0)
     });
   });
 
