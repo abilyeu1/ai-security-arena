@@ -332,6 +332,120 @@ function LoadingScreen() {
   );
 }
 
+// ─── Excel Paste Parser ──────────────────────────────────────────────────────
+// Matches pasted label\tvalue rows to field keys using fuzzy label matching
+function parseExcelPaste(text, fields) {
+  const result = {};
+  // Split on newlines, handle both \r\n and \n
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+
+  for (const line of lines) {
+    // Split on first tab only (value may contain tabs)
+    const tabIdx = line.indexOf("\t");
+    if (tabIdx === -1) continue;
+    const rawLabel = line.substring(0, tabIdx).trim().toLowerCase().replace(/[^a-z0-9 ]/g, "");
+    const value = line.substring(tabIdx + 1).trim();
+    if (!value) continue;
+
+    // Find best matching field
+    for (const field of fields) {
+      const fieldLabel = field.label.toLowerCase().replace(/[^a-z0-9 ]/g, "");
+      if (rawLabel === fieldLabel || rawLabel.includes(fieldLabel) || fieldLabel.includes(rawLabel)) {
+        result[field.key] = value;
+        break;
+      }
+    }
+  }
+
+  // Fallback: if no labels matched but we have the right number of lines, assign by order
+  if (Object.keys(result).length === 0 && lines.length >= fields.length) {
+    fields.forEach((field, i) => {
+      const line = lines[i];
+      const tabIdx = line.indexOf("\t");
+      const value = tabIdx !== -1 ? line.substring(tabIdx + 1).trim() : line.trim();
+      if (value) result[field.key] = value;
+    });
+  }
+
+  return result;
+}
+
+function SubmissionPanel({ fields, accentColor, data, setData, label }) {
+  const filledCount = fields.filter(f => (data[f.key] || "").trim()).length;
+  const allFilled = filledCount === fields.length;
+
+  const handlePaste = useCallback((e) => {
+    const text = e.clipboardData ? e.clipboardData.getData("text/plain") : e.target.value;
+    if (!text.trim()) return;
+    const parsed = parseExcelPaste(text, fields);
+    if (Object.keys(parsed).length > 0) {
+      e.preventDefault();
+      setData(prev => ({ ...prev, ...parsed }));
+    }
+  }, [fields, setData]);
+
+  const handleClear = useCallback(() => {
+    const empty = {};
+    fields.forEach(f => empty[f.key] = "");
+    setData(prev => ({ ...prev, ...empty }));
+  }, [fields, setData]);
+
+  return (
+    <div style={{ background: colors.cardBg, border: `1px solid ${accentColor}40`, borderRadius: 8, padding: 24 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <h3 style={{ fontFamily: fonts.mono, fontSize: 14, letterSpacing: 2, textTransform: "uppercase", margin: 0 }}>
+          <GlowText color={accentColor}>{label}</GlowText>
+        </h3>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {allFilled && <span style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.green, letterSpacing: 1 }}>ALL FIELDS PARSED</span>}
+          {filledCount > 0 && !allFilled && <span style={{ fontFamily: fonts.mono, fontSize: 10, color: "#FFAA00", letterSpacing: 1 }}>{filledCount}/{fields.length} FIELDS</span>}
+          {filledCount > 0 && (
+            <button onClick={handleClear} style={{
+              background: "none", border: `1px solid ${colors.border}`, borderRadius: 4,
+              color: colors.textMuted, fontFamily: fonts.mono, fontSize: 10, padding: "3px 8px", cursor: "pointer"
+            }}>CLEAR</button>
+          )}
+        </div>
+      </div>
+
+      {/* Single paste area */}
+      {!allFilled && (
+        <textarea
+          onPaste={handlePaste}
+          onChange={() => {}}
+          value=""
+          placeholder={`Paste ${label.toLowerCase()} cells from Excel here (select all rows, Cmd+V)`}
+          rows={4}
+          style={{
+            width: "100%", boxSizing: "border-box", padding: "16px",
+            fontFamily: fonts.mono, fontSize: 12, color: colors.textMuted, lineHeight: 1.6,
+            background: `${accentColor}06`, border: `2px dashed ${accentColor}30`, borderRadius: 6,
+            outline: "none", resize: "none", marginBottom: 16, textAlign: "center"
+          }}
+          onFocus={e => { e.target.style.borderColor = accentColor + "60"; e.target.style.background = accentColor + "10"; }}
+          onBlur={e => { e.target.style.borderColor = accentColor + "30"; e.target.style.background = accentColor + "06"; }}
+        />
+      )}
+
+      {/* Parsed field previews */}
+      {fields.map(f => {
+        const val = (data[f.key] || "").trim();
+        if (!val) return null;
+        return (
+          <div key={f.key} style={{ marginBottom: 10, padding: "8px 12px", background: colors.bg, borderRadius: 4, border: `1px solid ${colors.border}` }}>
+            <div style={{ fontFamily: fonts.mono, fontSize: 10, color: accentColor, letterSpacing: 1, marginBottom: 4, textTransform: "uppercase" }}>
+              {f.label}
+            </div>
+            <div style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.text, lineHeight: 1.5 }}>
+              {val}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Main App ────────────────────────────────────────────────────────────────
 export default function SecurityArena() {
   const [screen, setScreen] = useState("scenarios"); // scenarios | submission | loading | results
@@ -539,67 +653,8 @@ export default function SecurityArena() {
 
         {/* Two panels */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 32 }}>
-          {/* Attacker */}
-          <div style={{ background: colors.cardBg, border: `1px solid ${colors.red}40`, borderRadius: 8, padding: 24 }}>
-            <h3 style={{
-              fontFamily: fonts.mono, fontSize: 14, letterSpacing: 2, textTransform: "uppercase",
-              margin: "0 0 20px 0"
-            }}>
-              <GlowText color={colors.red}>Attacker</GlowText>
-            </h3>
-            {ATTACKER_FIELDS.map(f => (
-              <div key={f.key} style={{ marginBottom: 14 }}>
-                <label style={{ fontFamily: fonts.mono, fontSize: 11, color: colors.textMuted, letterSpacing: 1, display: "block", marginBottom: 4 }}>
-                  {f.label.toUpperCase()}
-                </label>
-                <textarea
-                  value={attackerData[f.key] || ""}
-                  onChange={e => setAttackerData(prev => ({ ...prev, [f.key]: e.target.value }))}
-                  placeholder={f.placeholder}
-                  rows={2}
-                  style={{
-                    width: "100%", boxSizing: "border-box", padding: "8px 10px",
-                    fontFamily: fonts.sans, fontSize: 13, color: colors.text, lineHeight: 1.5,
-                    background: colors.bg, border: `1px solid ${colors.border}`, borderRadius: 4,
-                    outline: "none", resize: "vertical"
-                  }}
-                  onFocus={e => e.target.style.borderColor = colors.red + "80"}
-                  onBlur={e => e.target.style.borderColor = colors.border}
-                />
-              </div>
-            ))}
-          </div>
-
-          {/* Defender */}
-          <div style={{ background: colors.cardBg, border: `1px solid ${colors.blue}40`, borderRadius: 8, padding: 24 }}>
-            <h3 style={{
-              fontFamily: fonts.mono, fontSize: 14, letterSpacing: 2, textTransform: "uppercase",
-              margin: "0 0 20px 0"
-            }}>
-              <GlowText color={colors.blue}>Defender</GlowText>
-            </h3>
-            {DEFENDER_FIELDS.map(f => (
-              <div key={f.key} style={{ marginBottom: 14 }}>
-                <label style={{ fontFamily: fonts.mono, fontSize: 11, color: colors.textMuted, letterSpacing: 1, display: "block", marginBottom: 4 }}>
-                  {f.label.toUpperCase()}
-                </label>
-                <textarea
-                  value={defenderData[f.key] || ""}
-                  onChange={e => setDefenderData(prev => ({ ...prev, [f.key]: e.target.value }))}
-                  placeholder={f.placeholder}
-                  rows={2}
-                  style={{
-                    width: "100%", boxSizing: "border-box", padding: "8px 10px",
-                    fontFamily: fonts.sans, fontSize: 13, color: colors.text, lineHeight: 1.5,
-                    background: colors.bg, border: `1px solid ${colors.border}`, borderRadius: 4,
-                    outline: "none", resize: "vertical"
-                  }}
-                  onFocus={e => e.target.style.borderColor = colors.blue + "80"}
-                  onBlur={e => e.target.style.borderColor = colors.border}
-                />
-              </div>
-            ))}
-          </div>
+          <SubmissionPanel fields={ATTACKER_FIELDS} accentColor={colors.red} data={attackerData} setData={setAttackerData} label="Attacker" />
+          <SubmissionPanel fields={DEFENDER_FIELDS} accentColor={colors.blue} data={defenderData} setData={setDefenderData} label="Defender" />
         </div>
 
         {/* Run button */}
