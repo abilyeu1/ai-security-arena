@@ -673,7 +673,7 @@ export default function SecurityArena() {
           "anthropic-dangerous-direct-browser-access": "true"
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-6",
+          model: "claude-opus-4-6",
           max_tokens: 32000,
           thinking: { type: "enabled", budget_tokens: 20000 },
           messages: [{ role: "user", content: prompt }]
