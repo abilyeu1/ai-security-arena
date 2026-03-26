@@ -159,23 +159,28 @@ DEFENDER SUBMISSION:
 - What It Stops: ${defenderData.whatItStops}
 - Tradeoff: ${defenderData.tradeoff}
 
-SCORING (1-10 each, 40 max per side. The side with the higher total wins.)
+SCORING SYSTEM:
+Each dimension is scored 0-5 (max 20 per side from dimensions).
+Then a +10 HEAD-TO-HEAD BONUS is awarded to whichever side wins the direct matchup.
+The head-to-head question: given THIS specific attack and THIS specific defense, does the defense actually block the attack? If yes, defender gets +10. If the attack gets through, attacker gets +10.
+Final max possible: 30 per side. Highest total wins.
 
-ATTACKER DIMENSIONS:
+ATTACKER DIMENSIONS (0-5 each):
 1. Plausibility: Could this realistically happen given how the agent works day to day?
 2. Specificity: Is the attack plan concrete and detailed, or vague and hand-wavy?
 3. Impact: If the attack works, how bad is the damage? Does it reach the most sensitive data?
 4. Evasion: Does the attack get around the existing security control, or ignore it?
 
-DEFENDER DIMENSIONS:
+DEFENDER DIMENSIONS (0-5 each):
 1. Effectiveness: Would this control actually stop the type of attack described?
 2. Precision: Is this a targeted fix, or does it break normal agent functionality?
 3. Tradeoff Honesty: Did they honestly acknowledge what the agent loses with this control?
 4. Residual Risk Awareness: Did they identify what their control does NOT protect against?
 
 RULES:
-- Score strictly. 10/10 is rare. 7 is a solid score.
+- Score strictly on the 0-5 scale. 5/5 is exceptional. 3 is solid.
 - Each rationale must be ONE concise sentence a policy student would understand.
+- For the head-to-head bonus, reason step by step about whether the specific defense blocks the specific attack, then award +5 to the appropriate side.
 - The verdict summary is one sentence. The reasoning is one short paragraph (3-5 sentences max).
 - Improvement suggestions: 2 bullet points each, short and actionable.
 - Do not give credit for attacks requiring capabilities the agent does not have.
@@ -185,21 +190,29 @@ Respond ONLY with this JSON, no other text:
 
 {
   "attacker_scores": {
-    "plausibility": { "score": <1-10>, "rationale": "<one sentence>" },
-    "specificity": { "score": <1-10>, "rationale": "<one sentence>" },
-    "impact": { "score": <1-10>, "rationale": "<one sentence>" },
-    "evasion": { "score": <1-10>, "rationale": "<one sentence>" },
-    "total": <sum>
+    "plausibility": { "score": <0-5>, "rationale": "<one sentence>" },
+    "specificity": { "score": <0-5>, "rationale": "<one sentence>" },
+    "impact": { "score": <0-5>, "rationale": "<one sentence>" },
+    "evasion": { "score": <0-5>, "rationale": "<one sentence>" },
+    "dimension_total": <sum of 4 dimensions>,
+    "bonus": <10 if attacker wins head-to-head, 0 otherwise>,
+    "total": <dimension_total + bonus>
   },
   "defender_scores": {
-    "effectiveness": { "score": <1-10>, "rationale": "<one sentence>" },
-    "precision": { "score": <1-10>, "rationale": "<one sentence>" },
-    "tradeoff_honesty": { "score": <1-10>, "rationale": "<one sentence>" },
-    "residual_risk_awareness": { "score": <1-10>, "rationale": "<one sentence>" },
-    "total": <sum>
+    "effectiveness": { "score": <0-5>, "rationale": "<one sentence>" },
+    "precision": { "score": <0-5>, "rationale": "<one sentence>" },
+    "tradeoff_honesty": { "score": <0-5>, "rationale": "<one sentence>" },
+    "residual_risk_awareness": { "score": <0-5>, "rationale": "<one sentence>" },
+    "dimension_total": <sum of 4 dimensions>,
+    "bonus": <10 if defender wins head-to-head, 0 otherwise>,
+    "total": <dimension_total + bonus>
+  },
+  "head_to_head": {
+    "winner": "<attacker or defender>",
+    "explanation": "<One sentence: does the defense block this specific attack, and why or why not?>"
   },
   "verdict": {
-    "winner": "<attacker or defender>",
+    "winner": "<attacker or defender - whoever has the higher total>",
     "summary": "<One sentence: who won and why.>",
     "reasoning": "<One short paragraph, 3-5 sentences, explaining the matchup.>"
   },
@@ -220,7 +233,7 @@ function GlowText({ children, color, style = {} }) {
   );
 }
 
-function ScoreBar({ score, maxScore = 10, color, label, rationale }) {
+function ScoreBar({ score, maxScore = 5, color, label, rationale }) {
   const pct = (score / maxScore) * 100;
   return (
     <div style={{ marginBottom: 12 }}>
@@ -779,7 +792,7 @@ export default function SecurityArena() {
                 <GlowText color={colors.red}>Attacker</GlowText>
               </h3>
               <span style={{ fontFamily: fonts.mono, fontSize: 24, fontWeight: 800, color: colors.red }}>
-                {result.attacker_scores.total}<span style={{ fontSize: 14, color: colors.textMuted }}>/40</span>
+                {result.attacker_scores.total}<span style={{ fontSize: 14, color: colors.textMuted }}>/30</span>
               </span>
             </div>
             {ATTACKER_DIMENSIONS.map(dim => (
@@ -791,6 +804,18 @@ export default function SecurityArena() {
                 rationale={result.attacker_scores[dim]?.rationale}
               />
             ))}
+            {/* Bonus row */}
+            <div style={{ marginTop: 8, padding: "8px 0", borderTop: `1px solid ${colors.border}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontFamily: fonts.mono, fontSize: 12, color: colors.green, letterSpacing: 1 }}>HEAD-TO-HEAD BONUS</span>
+                <span style={{ fontFamily: fonts.mono, fontSize: 14, fontWeight: 700, color: result.attacker_scores.bonus ? colors.green : colors.textMuted }}>
+                  +{result.attacker_scores.bonus || 0}
+                </span>
+              </div>
+              {result.head_to_head && result.head_to_head.winner === "attacker" && (
+                <div style={{ fontFamily: fonts.sans, fontSize: 12, color: colors.textMuted, marginTop: 4 }}>{result.head_to_head.explanation}</div>
+              )}
+            </div>
           </div>
 
           {/* Defender Scores */}
@@ -800,7 +825,7 @@ export default function SecurityArena() {
                 <GlowText color={colors.blue}>Defender</GlowText>
               </h3>
               <span style={{ fontFamily: fonts.mono, fontSize: 24, fontWeight: 800, color: colors.blue }}>
-                {result.defender_scores.total}<span style={{ fontSize: 14, color: colors.textMuted }}>/40</span>
+                {result.defender_scores.total}<span style={{ fontSize: 14, color: colors.textMuted }}>/30</span>
               </span>
             </div>
             {DEFENDER_DIMENSIONS.map(dim => (
@@ -812,6 +837,18 @@ export default function SecurityArena() {
                 rationale={result.defender_scores[dim]?.rationale}
               />
             ))}
+            {/* Bonus row */}
+            <div style={{ marginTop: 8, padding: "8px 0", borderTop: `1px solid ${colors.border}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontFamily: fonts.mono, fontSize: 12, color: colors.green, letterSpacing: 1 }}>HEAD-TO-HEAD BONUS</span>
+                <span style={{ fontFamily: fonts.mono, fontSize: 14, fontWeight: 700, color: result.defender_scores.bonus ? colors.green : colors.textMuted }}>
+                  +{result.defender_scores.bonus || 0}
+                </span>
+              </div>
+              {result.head_to_head && result.head_to_head.winner === "defender" && (
+                <div style={{ fontFamily: fonts.sans, fontSize: 12, color: colors.textMuted, marginTop: 4 }}>{result.head_to_head.explanation}</div>
+              )}
+            </div>
           </div>
         </div>
 
