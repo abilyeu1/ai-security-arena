@@ -451,6 +451,73 @@ function SubmissionPanel({ fields, accentColor, data, setData, label }) {
   );
 }
 
+// ─── Matrix Rain Background ──────────────────────────────────────────────────
+const MATRIX_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*<>{}[]=/\\|~^;:.BREACH INJECT EXFIL PAYLOAD VECTOR AGENT PROMPT";
+
+function MatrixRain() {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+
+    let w = canvas.width = window.innerWidth;
+    let h = canvas.height = window.innerHeight;
+    const fontSize = 14;
+    const columns = Math.floor(w / fontSize);
+    const drops = Array(columns).fill(1);
+    // Randomize initial positions so it doesn't all start from the top
+    for (let i = 0; i < drops.length; i++) {
+      drops[i] = Math.random() * h / fontSize * -1;
+    }
+
+    let animId;
+    function draw() {
+      ctx.fillStyle = "rgba(10, 14, 23, 0.06)";
+      ctx.fillRect(0, 0, w, h);
+      ctx.font = fontSize + "px 'JetBrains Mono', 'Fira Code', monospace";
+
+      for (let i = 0; i < drops.length; i++) {
+        const char = MATRIX_CHARS[Math.floor(Math.random() * MATRIX_CHARS.length)];
+        // Alternate between red and cyan tints at low opacity
+        const isRed = i % 3 === 0;
+        ctx.fillStyle = isRed ? "rgba(255, 71, 87, 0.12)" : "rgba(0, 210, 255, 0.10)";
+        ctx.fillText(char, i * fontSize, drops[i] * fontSize);
+
+        if (drops[i] * fontSize > h && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i] += 0.5 + Math.random() * 0.5;
+      }
+      animId = requestAnimationFrame(draw);
+    }
+
+    draw();
+
+    const handleResize = () => {
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+    };
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+        pointerEvents: "none", zIndex: 0
+      }}
+    />
+  );
+}
+
 // ─── Main App ────────────────────────────────────────────────────────────────
 export default function SecurityArena() {
   const [screen, setScreen] = useState("scenarios"); // scenarios | submission | loading | results
@@ -578,7 +645,9 @@ export default function SecurityArena() {
   if (screen === "scenarios") {
     const completedIds = scoreboard.map(e => e.scenarioId);
     return (
-      <div style={{ minHeight: "100vh", background: colors.bg, color: colors.text, fontFamily: fonts.sans, padding: "32px 40px" }}>
+      <div style={{ minHeight: "100vh", background: colors.bg, color: colors.text, fontFamily: fonts.sans, padding: "32px 40px", position: "relative" }}>
+        <MatrixRain />
+        <div style={{ position: "relative", zIndex: 1 }}>
         <div style={{ textAlign: "center", marginBottom: 8 }}>
           <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: 3, textTransform: "uppercase", margin: 0 }}>
             <GlowText color={colors.red}>AI Agent</GlowText>{" "}
@@ -639,6 +708,7 @@ export default function SecurityArena() {
             <ScoreboardTable scoreboard={scoreboard} />
           </div>
         )}
+        </div>
       </div>
     );
   }
