@@ -669,6 +669,8 @@ export default function SecurityArena() {
       if (!textBlock) throw new Error("No text block in API response.");
 
       let jsonStr = textBlock.text.replace(/```json\n?|```/g, "").trim();
+      // Sanitize literal newlines inside JSON string values (model sometimes outputs them)
+      jsonStr = jsonStr.replace(/"([^"\\]|\\.)*"/g, match => match.replace(/\n/g, " ").replace(/\r/g, ""));
       // Extract the outermost JSON object by finding balanced braces
       const firstBrace = jsonStr.indexOf("{");
       if (firstBrace === -1) throw new Error("No JSON object found in response.");
@@ -689,6 +691,11 @@ export default function SecurityArena() {
       jsonStr = jsonStr.substring(firstBrace, endIdx + 1);
 
       const parsed = JSON.parse(jsonStr);
+
+      // If verdict reasoning is empty, fall back to head-to-head explanation
+      if (!parsed.verdict.reasoning || parsed.verdict.reasoning.trim() === "") {
+        parsed.verdict.reasoning = parsed.head_to_head?.explanation || "The judge did not provide detailed reasoning for this matchup.";
+      }
 
       // Override winner based on total scores (higher score wins)
       const aTotal = parsed.attacker_scores.total;
