@@ -934,6 +934,40 @@ export default function SecurityArena() {
             <div style={{ width: 100 }} />
           </div>
           <ScenarioContextCard scenario={selectedScenario} />
+
+          {/* Submission Cards (read-only) */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+            <div style={{ background: colors.cardBg, border: `1px solid ${colors.red}40`, borderRadius: 8, padding: 24 }}>
+              <h3 style={{ fontFamily: fonts.mono, fontSize: 14, letterSpacing: 2, textTransform: "uppercase", margin: "0 0 16px 0" }}>
+                <GlowText color={colors.red}>Attacker</GlowText>
+              </h3>
+              {ATTACKER_FIELDS.map(f => {
+                const val = (attackerData[f.key] || "").trim();
+                if (!val) return null;
+                return (
+                  <div key={f.key} style={{ marginBottom: 10, padding: "8px 12px", background: colors.bg, borderRadius: 4, border: `1px solid ${colors.border}` }}>
+                    <div style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.red, letterSpacing: 1, marginBottom: 4, textTransform: "uppercase" }}>{f.label}</div>
+                    <div style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.text, lineHeight: 1.5 }}>{val}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ background: colors.cardBg, border: `1px solid ${colors.blue}40`, borderRadius: 8, padding: 24 }}>
+              <h3 style={{ fontFamily: fonts.mono, fontSize: 14, letterSpacing: 2, textTransform: "uppercase", margin: "0 0 16px 0" }}>
+                <GlowText color={colors.blue}>Defender</GlowText>
+              </h3>
+              {DEFENDER_FIELDS.map(f => {
+                const val = (defenderData[f.key] || "").trim();
+                if (!val) return null;
+                return (
+                  <div key={f.key} style={{ marginBottom: 10, padding: "8px 12px", background: colors.bg, borderRadius: 4, border: `1px solid ${colors.border}` }}>
+                    <div style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.blue, letterSpacing: 1, marginBottom: 4, textTransform: "uppercase" }}>{f.label}</div>
+                    <div style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.text, lineHeight: 1.5 }}>{val}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Verdict Banner */}
