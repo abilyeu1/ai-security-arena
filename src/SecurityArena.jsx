@@ -278,7 +278,7 @@ function ApiKeyInput({ apiKey, setApiKey }) {
   );
 }
 
-function LoadingScreen() {
+function LoadingScreen({ scenario, attackerData, defenderData }) {
   const [lines, setLines] = useState([]);
   const [barWidth, setBarWidth] = useState(0);
   const intervalRef = useRef(null);
@@ -297,36 +297,74 @@ function LoadingScreen() {
   }, []);
 
   return (
-    <div style={{
-      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-      minHeight: "80vh", gap: 32
-    }}>
-      <div style={{ fontFamily: fonts.sans, fontSize: 28, fontWeight: 700, color: colors.text, letterSpacing: 2, textTransform: "uppercase" }}>
-        <GlowText color={colors.green}>Evaluating Matchup</GlowText>
+    <div style={{ padding: "24px 40px" }}>
+      {/* Scenario header */}
+      <div style={{ textAlign: "center", marginBottom: 20 }}>
+        <div style={{ fontFamily: fonts.mono, fontSize: 11, color: colors.textMuted, letterSpacing: 1 }}>SCENARIO {scenario?.id}</div>
+        <div style={{ fontSize: 22, fontWeight: 700, color: colors.text, letterSpacing: 1 }}>{scenario?.title}</div>
       </div>
-      <div style={{
-        width: 520, maxWidth: "90%", background: colors.cardBg, border: `1px solid ${colors.border}`,
-        borderRadius: 8, padding: 24, fontFamily: fonts.mono, fontSize: 13
-      }}>
-        {lines.map((line, i) => (
-          <div key={i} style={{
-            color: i === lines.length - 1 ? colors.green : colors.textMuted,
-            marginBottom: 6, opacity: i === lines.length - 1 ? 1 : 0.6,
-            animation: i === lines.length - 1 ? "pulse 1.5s ease-in-out infinite" : "none"
-          }}>{line}</div>
-        ))}
-        <div style={{ marginTop: 16 }}>
-          <span style={{ color: colors.textMuted, fontSize: 11 }}>_</span>
-          <span style={{ animation: "blink 1s step-end infinite", color: colors.green }}>|</span>
+
+      {/* Submissions side by side */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, maxWidth: 960, margin: "0 auto 28px" }}>
+        {/* Attacker summary */}
+        <div style={{ background: colors.cardBg, border: `1px solid ${colors.red}30`, borderRadius: 8, padding: 16 }}>
+          <div style={{ fontFamily: fonts.mono, fontSize: 11, letterSpacing: 2, marginBottom: 12, color: colors.red }}>ATTACKER</div>
+          {ATTACKER_FIELDS.map(f => {
+            const val = (attackerData?.[f.key] || "").trim();
+            if (!val) return null;
+            return (
+              <div key={f.key} style={{ marginBottom: 8 }}>
+                <div style={{ fontFamily: fonts.mono, fontSize: 9, color: colors.textMuted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 2 }}>{f.label}</div>
+                <div style={{ fontSize: 12, color: colors.text, lineHeight: 1.5 }}>{val}</div>
+              </div>
+            );
+          })}
+        </div>
+        {/* Defender summary */}
+        <div style={{ background: colors.cardBg, border: `1px solid ${colors.blue}30`, borderRadius: 8, padding: 16 }}>
+          <div style={{ fontFamily: fonts.mono, fontSize: 11, letterSpacing: 2, marginBottom: 12, color: colors.blue }}>DEFENDER</div>
+          {DEFENDER_FIELDS.map(f => {
+            const val = (defenderData?.[f.key] || "").trim();
+            if (!val) return null;
+            return (
+              <div key={f.key} style={{ marginBottom: 8 }}>
+                <div style={{ fontFamily: fonts.mono, fontSize: 9, color: colors.textMuted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 2 }}>{f.label}</div>
+                <div style={{ fontSize: 12, color: colors.text, lineHeight: 1.5 }}>{val}</div>
+              </div>
+            );
+          })}
         </div>
       </div>
-      <div style={{ width: 520, maxWidth: "90%" }}>
-        <div style={{ height: 4, background: colors.cardBg, borderRadius: 2, overflow: "hidden" }}>
-          <div style={{
-            height: "100%", width: `${barWidth}%`, transition: "width 2s ease",
-            background: `linear-gradient(90deg, ${colors.green}80, ${colors.green})`,
-            boxShadow: `0 0 10px ${colors.green}40`
-          }} />
+
+      {/* Terminal + progress centered below */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+        <div style={{ fontFamily: fonts.sans, fontSize: 20, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase" }}>
+          <GlowText color={colors.green}>Evaluating Matchup</GlowText>
+        </div>
+        <div style={{
+          width: 480, maxWidth: "90%", background: colors.cardBg, border: `1px solid ${colors.border}`,
+          borderRadius: 8, padding: 16, fontFamily: fonts.mono, fontSize: 12
+        }}>
+          {lines.map((line, i) => (
+            <div key={i} style={{
+              color: i === lines.length - 1 ? colors.green : colors.textMuted,
+              marginBottom: 4, opacity: i === lines.length - 1 ? 1 : 0.6,
+              animation: i === lines.length - 1 ? "pulse 1.5s ease-in-out infinite" : "none"
+            }}>{line}</div>
+          ))}
+          <div style={{ marginTop: 10 }}>
+            <span style={{ color: colors.textMuted, fontSize: 11 }}>_</span>
+            <span style={{ animation: "blink 1s step-end infinite", color: colors.green }}>|</span>
+          </div>
+        </div>
+        <div style={{ width: 480, maxWidth: "90%" }}>
+          <div style={{ height: 4, background: colors.cardBg, borderRadius: 2, overflow: "hidden" }}>
+            <div style={{
+              height: "100%", width: `${barWidth}%`, transition: "width 2s ease",
+              background: `linear-gradient(90deg, ${colors.green}80, ${colors.green})`,
+              boxShadow: `0 0 10px ${colors.green}40`
+            }} />
+          </div>
         </div>
       </div>
       <style>{`
@@ -717,7 +755,7 @@ export default function SecurityArena() {
   if (screen === "loading") {
     return (
       <div style={{ minHeight: "100vh", background: colors.bg, color: colors.text, fontFamily: fonts.sans }}>
-        <LoadingScreen />
+        <LoadingScreen scenario={selectedScenario} attackerData={attackerData} defenderData={defenderData} />
       </div>
     );
   }
