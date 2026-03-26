@@ -637,12 +637,24 @@ export default function SecurityArena() {
       if (!textBlock) throw new Error("No text block in API response.");
 
       let jsonStr = textBlock.text.replace(/```json\n?|```/g, "").trim();
-      // Try to find JSON object if there's preamble
-      const jsonStart = jsonStr.indexOf("{");
-      const jsonEnd = jsonStr.lastIndexOf("}");
-      if (jsonStart > 0 || jsonEnd < jsonStr.length - 1) {
-        jsonStr = jsonStr.substring(jsonStart, jsonEnd + 1);
+      // Extract the outermost JSON object by finding balanced braces
+      const firstBrace = jsonStr.indexOf("{");
+      if (firstBrace === -1) throw new Error("No JSON object found in response.");
+      let depth = 0;
+      let inString = false;
+      let escaped = false;
+      let endIdx = -1;
+      for (let i = firstBrace; i < jsonStr.length; i++) {
+        const ch = jsonStr[i];
+        if (escaped) { escaped = false; continue; }
+        if (ch === "\\") { escaped = true; continue; }
+        if (ch === '"') { inString = !inString; continue; }
+        if (inString) continue;
+        if (ch === "{") depth++;
+        else if (ch === "}") { depth--; if (depth === 0) { endIdx = i; break; } }
       }
+      if (endIdx === -1) throw new Error("Malformed JSON in response.");
+      jsonStr = jsonStr.substring(firstBrace, endIdx + 1);
 
       const parsed = JSON.parse(jsonStr);
 
